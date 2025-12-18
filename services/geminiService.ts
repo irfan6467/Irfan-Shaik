@@ -1,91 +1,181 @@
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { CustomizationState } from "../types";
+import { GoogleGenAI, Chat, GenerateContentResponse, Content } from "@google/genai";
+import { CustomizationState, AspectRatio, FabricType, FitType, PrintMethod, GarmentType, GraphicType, Gender } from "../types";
+
+// --- KEYWORD CLUSTERS (The "Database") ---
+
+const MATERIAL_PHYSICS: Record<FabricType, string> = {
+  [FabricType.COTTON]: "Premium Surat organic cotton fabric, matte finish with high light absorption, visible natural fiber texture, soft micro-fuzz on surface, heavyweight drape, breathable weave structure.",
+  [FabricType.SILK]: "Luxurious Surat mulberry silk satin, high-gloss liquid sheen, anisotropic reflections, fluid and pooling drape, soft specular highlights, premium evening-wear aesthetic.",
+  [FabricType.LINEN]: "Natural Surat hemp-linen blend, visible slub texture with irregular yarn thickness, dry hand feel, crisp and angular folds, slightly translucent under studio light, earthy organic dye tones.",
+  [FabricType.RECYCLED_POLY]: "Technical sportswear weave, moisture-wicking texture, interlock knit, subtle synthetic sheen, smooth uniform surface.",
+  [FabricType.HEMP]: "Raw hemp fiber, coarse weave texture, earthy matte finish, rigid drape structure, authentic sustainable aesthetic."
+};
+
+const FIT_TOPOLOGY: Record<FitType, string> = {
+  [FitType.OVERSIZED]: "Oversized fit with drop shoulders, baggy sleeves, wide hem, excess fabric pooling, anti-fit streetwear aesthetic.",
+  [FitType.SLIM]: "Slim fit, tapered waist, high armholes, darted back construction, fabric contouring to body.",
+  [FitType.TAILORED]: "Tailored fit, structured silhouette, precise seam lines, professional drape.",
+  [FitType.REGULAR]: "Classic regular fit, balanced proportions, comfortable drape."
+};
+
+const PRINT_PHYSICS: Record<PrintMethod, string> = {
+  [PrintMethod.SCREEN]: "Plastisol ink screen print, vibrant opaque colors, slight surface gloss, crisp edges, thick ink application, minimal fabric show-through.",
+  [PrintMethod.DTG]: "Water-based pigment print, soft-hand feel, ink absorbed into fabric fibers, muted vintage colors, fabric texture visible through graphic, distressed edges.",
+  [PrintMethod.PUFF]: "3D puff print, raised foam ink texture, voluminous lettering, rounded beveled edges, matte rubber finish, casting soft shadows on fabric.",
+  [PrintMethod.EMBROIDERY]: "High-density satin stitch embroidery, raised thread texture, individual thread gloss, tactile relief, embroidered patch, slight fabric puckering around stitches."
+};
 
 const SYSTEM_INSTRUCTION = `
 You are "Styla", the elite AI Style Agent for Custemo, a sustainable fashion brand.
-Your goal is to be a proactive personal stylist, not just a support bot.
 Custemo specializes in on-demand manufacturing (Zero Waste) using premium fabrics from Surat.
 
-**YOUR EXPERTISE & CAPABILITIES:**
+**YOUR ARCHITECTURE & KNOWLEDGE BASE:**
 
-1.  **🔮 Personalized Trend Forecasting**: 
-    - Provide insights on current sustainable fashion trends.
-    - You have access to Google Search. Use it to find real-time trends if asked.
-    - Example: "Earthy tones like Sage and Clay are trending this season for a grounded, eco-chic look."
+1.  **🧬 Fabric Physics & Sourcing**: 
+    - You know that "Surat Cotton" is high-gauge and matte.
+    - You know "Linen" creates crisp, angular folds.
+    - Explain these physical properties to users to justify quality.
 
-2.  **🧘 Body Shape & Fit Analysis**:
-    - If a user asks about fit, politely ask for their body shape (Hourglass, Pear, Apple, Rectangle, Inverted Triangle) if you don't know it.
-    - **Pear**: Suggest Boat Necks or Collars to balance shoulders; A-line fits.
-    - **Apple**: Suggest V-Necks and Empire cuts; Regular or Tailored fits (avoid Oversized).
-    - **Hourglass**: Suggest Tailored fits to accentuate the waist.
-    - **Rectangle**: Suggest details like Pockets or Collars to add volume.
+2.  **🎨 Vector Integration**:
+    - If a user chooses "Puff Print", explain how the 3D foam ink sits on the fabric.
+    - If "Embroidery", mention the satin stitch gloss.
 
-3.  **👖 Wardrobe Integration**:
-    - Suggest how the piece they are designing matches items they likely own.
-    - Ask: "What color bottoms do you usually wear?" to give specific advice.
+3.  **🧘 Body & Fit Logic**:
+    - **Oversized (Gen Z)**: Drop shoulders, anti-fit, street aesthetic.
+    - **Tailored (Pro)**: Structured, darted, professional.
 
-4.  **🎉 Occasion Styling**:
-    - Recommend specific configurations for events (Office, Wedding, Casual, Travel).
-    - Example: "For a summer wedding, I recommend the Ethical Silk in Gold with a V-Neck."
-
-5.  **📸 Visual Generation**:
-    - If the user asks to "see it", "generate image", "show me", "visualize", or "create a model", you MUST include the tag {{GENERATE_IMAGE}} at the very end of your response.
-    - Example: "I'd love to show you how that looks! Generating a realistic preview for you now. {{GENERATE_IMAGE}}"
-    - Do not include the tag if the user is just asking for text advice.
+4.  **📸 Visual Generation**:
+    - If the user asks to "see it", "generate image", "show me", you MUST include the tag {{GENERATE_IMAGE}} at the very end of your response.
 
 **GUIDELINES:**
--   **Always Reference Context**: You know exactly what the user is designing (Type, Fabric, Color, Fit). Use this data.
+-   **Always Reference Context**: You see the exact "Digital Twin" configuration (Fabric, Print Method, Hardware, Gender).
 -   **Tone**: Chic, encouraging, knowledgeable, and sustainability-focused.
--   **Constraint**: Keep responses under 80 words usually, but use bullet points for "Trend Reports" or "Styling Lists".
 `;
 
-let chatSession: Chat | null = null;
+// --- MASTER PROMPT ASSEMBLER ---
 
-export const initializeChat = (): Chat => {
-  if (chatSession) return chatSession;
+const constructMasterPrompt = (state: CustomizationState, promptOverride?: string): string => {
+  // 1. Subject Layer (Persona Logic)
+  const genderTerm = state.gender === Gender.MEN ? "male" : state.gender === Gender.WOMEN ? "female" : "androgynous";
+  const isStreetwear = state.fit === FitType.OVERSIZED || state.type === GarmentType.HOODIE;
+  
+  const subject = isStreetwear 
+    ? `Full body fashion shot of a Gen Z ${genderTerm} model with a lean build and authentic look` 
+    : `Full body fashion shot of a professional ${genderTerm} model with a confident pose`;
 
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("API_KEY is missing");
-    throw new Error("API Key not found");
+  // 2. Garment Container
+  const garment = `wearing a premium ${state.color} ${state.type}. Fit style is ${state.fit} (${FIT_TOPOLOGY[state.fit]}). Features ${state.neckline} and ${state.hardware} hardware details.`;
+
+  // 3. Material Physics Layer (Surat Sourcing)
+  const material = `The fabric is ${MATERIAL_PHYSICS[state.fabric]}`;
+
+  // 4. Vector & Customization Layer
+  let design = "";
+  if (state.graphic !== GraphicType.NONE) {
+    const graphicName = state.graphic === GraphicType.CUSTOM ? "custom vector logo" : state.graphic;
+    design = `Centered on the chest/body, a '${graphicName}' design is applied as a ${state.printMethod}. The render shows ${PRINT_PHYSICS[state.printMethod]}. The graphic wraps realistically around the body form, distorted by fabric wrinkles and folds (displacement map effect).`;
+  }
+  
+  if (state.pattern !== 'Solid') {
+     design += ` The fabric features a ${state.pattern} pattern integrated into the weave.`;
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  // 5. Environment & Lighting Layer
+  const lighting = isStreetwear
+    ? "Background is a blurred Urban Street Scene with concrete textures. High contrast natural lighting, golden hour."
+    : "Background is a clean High-End Studio Cyclorama. Soft diffused shadows, distinct separation between subject and background, Rembrandt lighting.";
 
-  chatSession = ai.chats.create({
-    model: "gemini-2.5-flash",
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      temperature: 0.7,
-      tools: [{ googleSearch: {} }], // Enabled Search Grounding
-    },
-  });
+  // 6. Technical Modifiers
+  const technical = "Hyper-realistic, Unreal Engine 5 render style, raytracing, 8k resolution, macro photography details, sharp focus, phase one camera quality, no prompt pollution.";
 
-  return chatSession;
+  // Assembly
+  return `${subject}, ${garment} ${material} ${design} ${lighting} ${technical} ${promptOverride || ''}`;
 };
+
+
+let chatSession: Chat | null = null;
+let currentModel: string = '';
 
 export const sendMessageStream = async (
   message: string,
-  currentContext: CustomizationState
-): Promise<AsyncIterable<GenerateContentResponse>> => {
-  const chat = initializeChat();
-  
-  // Structured context injection to help the AI reason about the specific design
+  currentContext: CustomizationState,
+  options?: { useThinking?: boolean; image?: string }
+) => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key not found");
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Determine Model & Config
+  let targetModel = 'gemini-2.5-flash';
+  let config: any = {
+    systemInstruction: SYSTEM_INSTRUCTION,
+    temperature: 0.7,
+    tools: [
+        { googleSearch: {} }
+    ]
+  };
+
+  if (options?.useThinking) {
+      targetModel = 'gemini-3-pro-preview';
+      config = {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          thinkingConfig: { thinkingBudget: 32768 },
+          tools: [] 
+      };
+  } else if (options?.image) {
+      targetModel = 'gemini-3-pro-preview';
+      config = {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          tools: [{ googleSearch: {} }]
+      };
+  }
+
+  // Session Management
+  let history: Content[] = [];
+  if (chatSession) {
+      try {
+          history = await chatSession.getHistory();
+      } catch (e) {
+          console.warn("Failed to get history", e);
+      }
+  }
+
+  if (!chatSession || currentModel !== targetModel) {
+      chatSession = ai.chats.create({
+          model: targetModel,
+          config,
+          history
+      });
+      currentModel = targetModel;
+  }
+
+  // Construct Context Message with detailed physics
   const contextMessage = `
-[SYSTEM: User's Current Design State]
-- Garment: ${currentContext.type}
-- Fabric: ${currentContext.fabric}
-- Color: ${currentContext.color}
-- Fit: ${currentContext.fit}
-- Neckline: ${currentContext.neckline}
-- Sleeve Length: ${currentContext.sleeveLength}
-- Has Pockets: ${currentContext.hasPockets}
+[SYSTEM: Digital Twin Configuration]
+- Collection: ${currentContext.gender}
+- Garment: ${currentContext.type} (${currentContext.fit})
+- Material: ${currentContext.fabric} (${MATERIAL_PHYSICS[currentContext.fabric]})
+- Hardware: ${currentContext.hardware}
+- Print Tech: ${currentContext.printMethod} (${PRINT_PHYSICS[currentContext.printMethod]})
+- Graphic: ${currentContext.graphic}
 
 [USER QUERY]: ${message}
   `;
 
+  let msgToSend: any = contextMessage;
+
+  if (options?.image) {
+      const base64Data = options.image.split(',')[1];
+      const mimeType = options.image.substring(options.image.indexOf(':') + 1, options.image.indexOf(';')) || 'image/jpeg';
+      
+      msgToSend = [
+          { text: contextMessage },
+          { inlineData: { data: base64Data, mimeType } }
+      ];
+  }
+
   try {
-    return await chat.sendMessageStream({ message: contextMessage });
+    return await chatSession.sendMessageStream({ message: msgToSend });
   } catch (error) {
     console.error("Gemini Chat Error:", error);
     throw error;
@@ -95,62 +185,43 @@ export const sendMessageStream = async (
 export const generateGarmentPreview = async (state: CustomizationState): Promise<string> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key not found");
-
   const ai = new GoogleGenAI({ apiKey });
 
-  const prompt = `
-    Create a high-fashion, photorealistic product image of a garment with these specifications:
-    - Type: ${state.type}
-    - Fabric: ${state.fabric}
-    - Color Code/Tone: ${state.color}
-    - Fit: ${state.fit}
-    - Neckline: ${state.neckline}
-    - Sleeve Length: ${state.sleeveLength}
-    - Pockets: ${state.hasPockets ? 'Visible pockets' : 'No pockets'}
+  const masterPrompt = constructMasterPrompt(state);
+  console.log("Generating with Master Prompt:", masterPrompt);
 
-    **Style Guide:**
-    - Show the garment on a mannequin or as a clean, professional flat lay.
-    - Background: Neutral, soft beige or off-white studio background to highlight the garment.
-    - Lighting: Soft studio lighting, emphasizing the texture of the ${state.fabric}.
-    - The image must be strictly manufacturable and realistic (no fantasy elements).
-    - Perspective: Front view, full length of the garment.
-  `;
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        { text: masterPrompt },
+      ],
+    },
+    config: {
+        imageConfig: {
+          aspectRatio: "3:4",
+        }
+    },
+  });
 
-  try {
-    // Switched to Imagen 4 for robust image generation
-    const response = await ai.models.generateImages({
-      model: 'imagen-4.0-generate-001',
-      prompt: prompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: '3:4',
-        outputMimeType: 'image/jpeg',
-      }
-    });
-
-    const generatedImage = response.generatedImages?.[0]?.image;
-    if (generatedImage?.imageBytes) {
-      return `data:${generatedImage.mimeType || 'image/jpeg'};base64,${generatedImage.imageBytes}`;
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
     }
-
-    throw new Error("No image generated");
-  } catch (error) {
-    console.error("Image Generation Error:", error);
-    throw error;
   }
+  throw new Error("No image generated");
 };
-
-// --- NEW FEATURES ---
 
 // 1. Pro Image Generation (Gemini 3 Pro Image)
 export const generateProImage = async (
-  prompt: string, 
-  size: '1K' | '2K' | '4K'
+  state: CustomizationState, 
+  customInstruction: string,
+  size: '1K' | '2K' | '4K',
+  aspectRatio: AspectRatio = '1:1'
 ): Promise<string> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key not found");
   
-  // Ensure paid key is selected for Pro models
   if (typeof window !== 'undefined' && (window as any).aistudio) {
     const hasKey = await (window as any).aistudio.hasSelectedApiKey();
     if (!hasKey) {
@@ -158,18 +229,18 @@ export const generateProImage = async (
     }
   }
 
-  // Re-init with fresh key in case it changed
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const masterPrompt = constructMasterPrompt(state, customInstruction);
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
     contents: {
-      parts: [{ text: prompt }],
+      parts: [{ text: masterPrompt }],
     },
     config: {
       imageConfig: {
-        imageSize: size, // 1K, 2K, 4K
-        aspectRatio: '1:1',
+        imageSize: size,
+        aspectRatio: aspectRatio,
       }
     },
   });
@@ -191,8 +262,8 @@ export const editGarmentImage = async (
   if (!apiKey) throw new Error("API Key not found");
   const ai = new GoogleGenAI({ apiKey });
 
-  // Remove prefix for API
   const base64Data = base64Image.split(',')[1];
+  const mimeType = base64Image.substring(base64Image.indexOf(':') + 1, base64Image.indexOf(';')) || 'image/png';
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
@@ -201,7 +272,7 @@ export const editGarmentImage = async (
         {
           inlineData: {
             data: base64Data,
-            mimeType: 'image/png', // Assuming PNG for now from previous generations
+            mimeType: mimeType,
           },
         },
         {
@@ -227,7 +298,6 @@ export const generateFashionVideo = async (
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key not found");
   
-  // Key Check for Veo
   if (typeof window !== 'undefined' && (window as any).aistudio) {
     const hasKey = await (window as any).aistudio.hasSelectedApiKey();
     if (!hasKey) {
@@ -235,37 +305,32 @@ export const generateFashionVideo = async (
     }
   }
   
-  // Re-init with fresh key
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-  // Remove prefix
   const base64Data = base64Image.split(',')[1];
 
   let operation = await ai.models.generateVideos({
     model: 'veo-3.1-fast-generate-preview',
-    prompt: prompt || "Cinematic movement of the fabric, fashion runway style",
+    prompt: prompt || "Cinematic movement of the fabric, slow motion fashion film.",
     image: {
       imageBytes: base64Data,
       mimeType: 'image/png',
     },
-    config: {
-      numberOfVideos: 1,
-      resolution: '720p',
-      aspectRatio: '16:9'
-    }
+    config: { numberOfVideos: 1, resolution: '720p', aspectRatio: '16:9' }
   });
 
-  // Poll for completion
   while (!operation.done) {
-    await new Promise(resolve => setTimeout(resolve, 5000)); // Check every 5s
+    await new Promise(resolve => setTimeout(resolve, 5000));
     operation = await ai.operations.getVideosOperation({operation: operation});
   }
 
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
   if (!downloadLink) throw new Error("Video generation failed");
 
-  // Fetch video bytes
   const videoRes = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
   const videoBlob = await videoRes.blob();
   return URL.createObjectURL(videoBlob);
+};
+
+export const analyzeImage = async (base64Image: string, prompt: string): Promise<string> => {
+    return ""; 
 };

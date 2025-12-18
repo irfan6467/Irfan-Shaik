@@ -5,14 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Custemo | AI Sustainable Fashion</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 
+      === CUSTOM FONTS GUIDE === 
+      To use your own uploaded fonts (e.g., .woff2, .ttf):
+      1. Upload your font files to a public accessible folder (e.g., /public/fonts/).
+      2. Remove the Google Fonts links below.
+      3. Uncomment the @font-face block in the <style> section and point the URL to your file.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
+              // If using custom fonts, change 'Inter' or 'Playfair Display' to your font-family name defined in @font-face
               sans: ['Inter', 'sans-serif'],
               serif: ['Playfair Display', 'serif'],
             },
@@ -24,29 +34,216 @@
                 gold: '#d4af37',
                 cream: '#f5f5f4'
               }
+            },
+            transitionTimingFunction: {
+              'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+              'fluid': 'cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+            animation: {
+              'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+              'fade-in': 'fadeIn 0.6s ease-out forwards',
+              'slide-in-right': 'slideInRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+              'shimmer': 'shimmer 2s linear infinite',
+              'float': 'float 6s ease-in-out infinite',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'marquee': 'marquee 25s linear infinite',
+              'blob': 'blob 10s infinite',
+              'breathe': 'breathe 4s ease-in-out infinite',
+              'liquid-flow': 'liquidFlow 8s linear infinite',
+              'stream-text': 'streamText 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+              'fabric-settle': 'fabricSettle 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+              'swarm': 'swarm 20s linear infinite',
+            },
+            keyframes: {
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(30px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideInRight: {
+                '0%': { opacity: '0', transform: 'translateX(20px)' },
+                '100%': { opacity: '1', transform: 'translateX(0)' },
+              },
+              shimmer: {
+                '0%': { backgroundPosition: '200% 0' },
+                '100%': { backgroundPosition: '-200% 0' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              marquee: {
+                '0%': { transform: 'translateX(0%)' },
+                '100%': { transform: 'translateX(-100%)' },
+              },
+              blob: {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' },
+              },
+              breathe: {
+                '0%, 100%': { transform: 'scale(1)', opacity: '0.8' },
+                '50%': { transform: 'scale(1.05)', opacity: '0.4' },
+              },
+              liquidFlow: {
+                '0%': { backgroundPosition: '0% 50%' },
+                '100%': { backgroundPosition: '100% 50%' },
+              },
+              streamText: {
+                '0%': { opacity: '0', filter: 'blur(8px)', transform: 'translateY(4px)' },
+                '100%': { opacity: '1', filter: 'blur(0)', transform: 'translateY(0)' },
+              },
+              fabricSettle: {
+                '0%': { transform: 'scale(1.05) translateY(-10px)', opacity: '0' },
+                '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
+              },
+              swarm: {
+                '0%': { transform: 'rotate(0deg) translate(5px) rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg) translate(5px) rotate(-360deg)' },
+              }
             }
           }
         }
       }
     </script>
     <style>
+      /* 
+      === CUSTOM FONT EXAMPLE ===
+      @font-face {
+        font-family: 'MyCustomBrandFont';
+        src: url('/fonts/MyBrandFont-Regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+      }
+      
+      Then update tailwind.config above:
+      serif: ['MyCustomBrandFont', 'serif'],
+      */
+
       body {
         background-color: #f5f5f4;
         color: #1c1c1c;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
       }
+      
+      /* Glassmorphism 2.0 - Dynamic Glass */
+      .glass {
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        transition: all 0.3s ease;
+      }
+      
+      .glass-dark {
+        background: rgba(10, 10, 10, 0.7);
+        backdrop-filter: blur(24px) saturate(120%);
+        -webkit-backdrop-filter: blur(24px) saturate(120%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      /* Molten Chrome Text */
+      .text-liquid {
+        background: linear-gradient(
+          90deg, 
+          #000000 0%, 
+          #666666 25%, 
+          #ffffff 50%, 
+          #666666 75%, 
+          #000000 100%
+        );
+        background-size: 200% auto;
+        color: transparent;
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: liquidFlow 6s linear infinite;
+        filter: url(#liquid-distort-text);
+        text-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+      }
+
+      /* Iridescent Sheen Holographic Effect */
+      .iridescent-hover {
+        position: relative;
+        overflow: hidden;
+      }
+      .iridescent-hover::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+          to right,
+          transparent,
+          rgba(255, 255, 255, 0.4),
+          rgba(255, 0, 128, 0.2),
+          rgba(0, 255, 255, 0.2),
+          transparent
+        );
+        transform: skewX(-25deg);
+        transition: all 0.7s ease;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .iridescent-hover:hover::before {
+        left: 200%;
+        opacity: 1;
+        transition: left 0.7s ease;
+      }
+
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #888; 
-        border-radius: 4px;
+        background: #d4d4d4; 
+        border-radius: 10px;
+        transition: background 0.3s;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #555; 
+        background: #a3a3a3; 
+      }
+      
+      .stagger-delay-1 { animation-delay: 100ms; }
+      .stagger-delay-2 { animation-delay: 200ms; }
+      .stagger-delay-3 { animation-delay: 300ms; }
+      
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      .mask-gradient-right {
+        -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+        mask-image: linear-gradient(to right, black 90%, transparent 100%);
+      }
+
+      /* Gooey Filter Container */
+      .goo-filter {
+        filter: url('#goo');
+      }
+
+      /* Voxel Glitch Hover */
+      .voxel-hover {
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .voxel-hover:hover {
+        transform: scale(1.02);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
       }
     </style>
   <script type="importmap">
@@ -62,6 +259,46 @@
 </script>
 </head>
   <body>
+    <!-- SVG Filters Engine -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+      <defs>
+        <!-- Liquid Text Filter: Viscous edges -->
+        <filter id="liquid-distort-text">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01 0.02" numOctaves="1" result="warp">
+             <animate attributeName="baseFrequency" from="0.01 0.02" to="0.02 0.03" dur="8s" repeatCount="indefinite"/>
+          </feTurbulence>
+          <feDisplacementMap xChannelSelector="R" yChannelSelector="G" scale="3" in="SourceGraphic" in2="warp" />
+        </filter>
+
+        <!-- Stronger Fluid Distort -->
+        <filter id="fluid-distort">
+           <feTurbulence type="turbulence" baseFrequency="0.01 0.05" numOctaves="2" result="turbulence"/>
+           <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="20" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        
+        <!-- Fabric Weave Filter: Micro-geometry for fuzz -->
+        <filter id="fabric-micro">
+           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="5" stitchTiles="stitch" />
+           <feColorMatrix type="saturate" values="0" />
+           <feComponentTransfer>
+               <feFuncA type="linear" slope="0.3" />
+           </feComponentTransfer>
+        </filter>
+
+        <!-- Metaballs (Gooey) Filter -->
+        <filter id="goo">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" result="goo" />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+        </filter>
+
+        <!-- Glitch Displacement -->
+        <filter id="glitch-disp">
+            <feTurbulence type="turbulence" baseFrequency="0.2" numOctaves="1" result="turbulence" />
+            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="10" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
     <div id="root"></div>
   </body>
 </html>
